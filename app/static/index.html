@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Master Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-white hidden md:block flex-shrink-0">
+            <div class="p-6 border-b border-gray-800">
+                <h1 class="text-2xl font-bold text-blue-400"><i class="fas fa-bullseye mr-2"></i>Lead Master</h1>
+                <p class="text-xs text-gray-500 mt-1">B2B Lead Generation Agent</p>
+            </div>
+            <nav class="mt-6 px-4 space-y-2">
+                <a href="#" onclick="showSection('leads')" class="nav-link block py-2.5 px-4 rounded transition duration-200 bg-blue-600 hover:bg-blue-700 text-white" id="nav-leads">
+                    <i class="fas fa-users mr-2"></i> Leads
+                </a>
+                <a href="#" onclick="showSection('write')" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800 text-gray-400 hover:text-white" id="nav-write">
+                    <i class="fas fa-pen-nib mr-2"></i> Write / Drafts
+                </a>
+                <a href="#" onclick="showSection('radar')" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800 text-gray-400 hover:text-white" id="nav-radar">
+                    <i class="fas fa-satellite-dish mr-2"></i> Social Radar
+                </a>
+                <a href="#" onclick="showSection('campaigns')" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800 text-gray-400 hover:text-white" id="nav-campaigns">
+                    <i class="fas fa-envelope mr-2"></i> Campaigns
+                </a>
+                <a href="#" onclick="showSection('settings')" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-800 text-gray-400 hover:text-white" id="nav-settings">
+                    <i class="fas fa-cogs mr-2"></i> Settings
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+            <!-- Header -->
+            <header class="flex items-center justify-between px-6 py-4 bg-white shadow-sm border-b">
+                <div class="flex items-center space-x-4">
+                    <button class="md:hidden text-gray-500 focus:outline-none">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h2 class="text-xl font-semibold text-gray-800" id="pageTitle">Leads Dashboard</h2>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </span>
+                        <input type="text" id="lead-search" oninput="filterLeads()" placeholder="Search leads..." class="pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-500 w-64">
+                    </div>
+
+                    <!-- Global Refresh Button -->
+                    <button onclick="refreshCurrentView()" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition duration-200" title="Refresh Current View">
+                        <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                    </button>
+                    
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button onclick="toggleNotifications()" class="p-2 rounded-full hover:bg-gray-100 relative focus:outline-none">
+                            <i class="fas fa-bell text-gray-600"></i>
+                            <span id="notification-badge" class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full hidden"></span>
+                        </button>
+                        
+                        <!-- Dropdown -->
+                        <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 overflow-hidden border border-gray-100">
+                            <div class="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
+                                <span class="font-semibold text-gray-700 text-sm">Notifications</span>
+                                <button onclick="markAllRead()" class="text-xs text-blue-500 hover:text-blue-700">Mark all read</button>
+                            </div>
+                            <div id="notification-list" class="max-h-64 overflow-y-auto">
+                                <!-- Items injected here -->
+                                <div class="p-4 text-center text-gray-500 text-sm">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </header>
+
+            <!-- Content -->
+            <main class="p-6">
+                
+                <!-- Section: Leads -->
+                <div id="section-leads">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">Total Leads</p>
+                                    <h3 class="text-2xl font-bold text-gray-800" id="totalLeads">0</h3>
+                                </div>
+                                <div class="p-2 bg-blue-100 rounded-lg">
+                                    <i class="fas fa-database text-blue-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-5 border-l-4 border-green-500">
+                             <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500">New Today</p>
+                                    <h3 class="text-2xl font-bold text-gray-800" id="newLeads">0</h3>
+                                </div>
+                                <div class="p-2 bg-green-100 rounded-lg">
+                                    <i class="fas fa-user-plus text-green-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Add more cards as needed -->
+                    </div>
+
+                    <!-- Leads Table -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-800">Recent Leads</h3>
+                            <button onclick="refreshCurrentView()" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center transition duration-150 ease-in-out">
+                                <i class="fas fa-sync-alt mr-1" id="table-refresh-icon"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Website</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="leadsTableBody">
+                                    <!-- Rows will be populated by JS -->
+                                    <tr>
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">Loading leads...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-200">
+                             <!-- Pagination or view all link could go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Write / Drafts -->
+                <div id="section-write" class="hidden">
+                    <div class="flex h-[calc(100vh-140px)] gap-4">
+                        <!-- Left: List of Leads -->
+                        <div class="w-1/3 bg-white rounded-lg shadow overflow-hidden flex flex-col">
+                            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                                <h3 class="font-semibold text-gray-700">Pending Drafts</h3>
+                                <button onclick="fetchWriteLeads()" class="text-blue-500 hover:text-blue-700"><i class="fas fa-sync"></i></button>
+                            </div>
+                            <div class="overflow-y-auto flex-1 p-2 space-y-2" id="writeLeadsList">
+                                <!-- Dynamic List -->
+                                <p class="text-center text-gray-400 mt-10">Loading...</p>
+                            </div>
+                        </div>
+
+                        <!-- Right: Editor -->
+                        <div class="w-2/3 bg-white rounded-lg shadow p-6 flex flex-col">
+                            <div id="editor-empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                <i class="fas fa-paper-plane fa-3x mb-4 text-gray-200"></i>
+                                <p>Select a lead from the list to review draft</p>
+                            </div>
+                            
+                            <div id="editor-content" class="hidden flex-1 flex flex-col h-full">
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Company / Recipient</label>
+                                    <div class="flex justify-between">
+                                        <div class="font-bold text-lg" id="write-company-name">Company Name</div>
+                                        <div class="text-sm text-gray-500" id="write-lead-email">email@example.com</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                                    <input type="text" id="write-subject" class="w-full border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div class="mb-4 flex-1 flex flex-col">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Body</label>
+                                    <textarea id="write-body" class="w-full flex-1 border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 resize-none font-mono text-sm"></textarea>
+                                </div>
+                                
+                                <div class="flex justify-between items-center pt-4 border-t">
+                                    <div id="write-status" class="text-sm"></div>
+                                    <div class="space-x-3">
+                                        <button onclick="saveWriteDraft()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300">
+                                            Save Draft
+                                        </button>
+                                        <button onclick="sendWriteDraft()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                            <i class="fas fa-paper-plane mr-2"></i> Approve & Send
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Social Radar -->
+                <div id="section-radar" class="hidden">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-lg font-semibold mb-4">Start New Radar Scan (Google Maps)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="radar-query" placeholder="Search Keywords (e.g., 'marketing agencies')" class="border rounded p-2 w-full">
+                            <input type="text" id="radar-location" placeholder="Location (e.g., 'Berlin')" class="border rounded p-2 w-full">
+                        </div>
+                        <button onclick="triggerRadarScan()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-search mr-2"></i> Launch Scan
+                        </button>
+                        <div id="radar-status" class="mt-4 text-sm text-gray-600 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Section: Campaigns -->
+                <div id="section-campaigns" class="hidden">
+                     <div class="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                        <i class="fas fa-envelope fa-3x mb-4"></i>
+                        <h3 class="text-xl">Approved Campaigns</h3>
+                        <p class="text-gray-500 mb-4">Leads that have been contacted.</p>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent At</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="approvedTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Sent Leads Here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Settings -->
+                <div id="section-settings" class="hidden">
+                    <div class="max-w-4xl mx-auto space-y-8">
+                        
+                        <div class="flex justify-between items-center pb-6 border-b">
+                            <div>
+                                <h3 class="text-2xl font-bold text-gray-800">AI Logic Settings</h3>
+                                <p class="text-gray-500">Customize how the AI analyzes leads and generates emails.</p>
+                            </div>
+                            <button onclick="saveAllSettings()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                                <i class="fas fa-save mr-2"></i> Save Changes
+                            </button>
+                        </div>
+                        
+                        <!-- Offer Configuration -->
+                        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
+                             <div class="mb-4">
+                                <h4 class="font-bold text-lg text-gray-800 flex items-center">
+                                    <i class="fas fa-gift mr-2 text-purple-500"></i> My Offer
+                                </h4>
+                                <p class="text-sm text-gray-500 mb-2">What are you selling? This is injected into every email generation.</p>
+                                <textarea id="setting-my_offer" class="w-full h-24 border rounded p-3 focus:ring-purple-500 focus:border-purple-500 text-sm" placeholder="We improve X by Y..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Prompt Editors -->
+                        <div class="grid grid-cols-1 gap-6">
+                            
+                             <!-- Email Generation Prompt -->
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-magic mr-2 text-blue-500"></i> Code Email Generation Prompt</h4>
+                                <p class="text-xs text-gray-500 mb-2">Instructions for writing the draft email.</p>
+                                <textarea id="setting-generate_email" class="w-full h-48 border rounded p-3 font-mono text-xs bg-gray-50 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                            </div>
+
+                            <!-- Website Analysis Prompt -->
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-search mr-2 text-green-500"></i> Website Analysis Prompt</h4>
+                                <p class="text-xs text-gray-500 mb-2">Instructions for extracting data from company websites.</p>
+                                <textarea id="setting-analyze_text" class="w-full h-48 border rounded p-3 font-mono text-xs bg-gray-50 focus:ring-green-500 focus:border-green-500"></textarea>
+                            </div>
+
+                             <!-- JIT Inference Prompt -->
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-brain mr-2 text-yellow-500"></i>  Map Lead Inference Prompt (No Website)</h4>
+                                <p class="text-xs text-gray-500 mb-2">Instructions for guessing company needs based on Name & Rating.</p>
+                                <textarea id="setting-infer_lead" class="w-full h-48 border rounded p-3 font-mono text-xs bg-gray-50 focus:ring-yellow-500 focus:border-yellow-500"></textarea>
+                            </div>
+
+                             <!-- Social Radar Prompt -->
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-satellite-dish mr-2 text-red-500"></i> Social Radar Filter Prompt</h4>
+                                <p class="text-xs text-gray-500 mb-2">Instructions for distinguishing real leads from noise on social media.</p>
+                                <textarea id="setting-social_lead" class="w-full h-32 border rounded p-3 font-mono text-xs bg-gray-50 focus:ring-red-500 focus:border-red-500"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div id="draftModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Email Draft Review</h3>
+                <button onclick="closeDraftModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div id="draftLoading" class="hidden text-center py-4">
+                <i class="fas fa-spinner fa-spin text-blue-500 fa-2x"></i> <span class="ml-2 text-gray-600">Loading Draft...</span>
+            </div>
+
+            <div id="draftContent" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Subject:</label>
+                    <input type="text" id="draftSubject" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Body:</label>
+                    <textarea id="draftBody" rows="10" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                </div>
+                <div class="flex items-center justify-end space-x-3 mt-6">
+                    <button onclick="saveDraft()" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Save Changes
+                    </button>
+                    <button onclick="sendDraft()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        <i class="fas fa-paper-plane mr-2"></i> Approve & Send
+                    </button>
+                </div>
+                <div id="draftStatus" class="mt-2 text-center text-sm"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLeadId = null;
+
+// Functions for Draft Modal
+        async function openDraftModal(leadId) {
+            currentLeadId = leadId;
+            document.getElementById('draftModal').classList.remove('hidden');
+            document.getElementById('draftLoading').classList.remove('hidden');
+            document.getElementById('draftContent').classList.add('hidden');
+            document.getElementById('draftStatus').innerText = '';
+
+            try {
+                // Try to get existing draft
+                const response = await fetch(`/leads/${leadId}/draft`);
+                
+                if (response.status === 404) {
+                    // No draft exists yet, default template
+                    document.getElementById('draftSubject').value = "Default Subject";
+                    document.getElementById('draftBody').value = "Hello,\n\nWe would like to discuss a partnership...";
+                     document.getElementById('draftLoading').classList.add('hidden');
+                     document.getElementById('draftContent').classList.remove('hidden');
+                } else if (response.ok) {
+                    const draft = await response.json();
+                    document.getElementById('draftSubject').value = draft.subject;
+                    document.getElementById('draftBody').value = draft.body;
+                    document.getElementById('draftLoading').classList.add('hidden');
+                    document.getElementById('draftContent').classList.remove('hidden');
+                } else {
+                   throw new Error("Failed to load draft");
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('draftSubject').value = "Error loading draft";
+            }
+        }
+
+        function closeDraftModal() {
+            document.getElementById('draftModal').classList.add('hidden');
+            currentLeadId = null;
+        }
+
+        async function saveDraft() {
+            if (!currentLeadId) return;
+            const subject = document.getElementById('draftSubject').value;
+            const body = document.getElementById('draftBody').value;
+            
+            document.getElementById('draftStatus').innerHTML = '<span class="text-gray-500">Saving...</span>';
+
+            try {
+                // Since update endpoint expects an existing draft, we might need a CREATE endpoint if 404
+                // But simplified: assume process_lead created it. If not, we call update (assuming ID logic is handled) 
+                // Wait, update_draft in endpoints expects draft to exist.
+                // For now, let's just try update.
+                let response = await fetch(`/leads/${currentLeadId}/draft`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({new_subject: subject, new_body: body})
+                });
+                
+                if (response.ok) {
+                    document.getElementById('draftStatus').innerHTML = '<span class="text-green-600 font-bold"><i class="fas fa-check"></i> Draft saved!</span>';
+                } else {
+                    const err = await response.json();
+                     document.getElementById('draftStatus').innerText = 'Error: ' + err.detail;
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('draftStatus').innerText = 'Network Error';
+            }
+        }
+
+        async function sendDraft() {
+             if (!currentLeadId) return;
+             
+             if(!confirm("Are you sure you want to send this email?")) return;
+
+             document.getElementById('draftStatus').innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Sending...</span>';
+
+             try {
+                const response = await fetch(`/leads/${currentLeadId}/send`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contact_email: null}) // Use lead email from DB
+                });
+
+                if (response.ok) {
+                    document.getElementById('draftStatus').innerHTML = '<span class="text-green-600 font-bold">Email Sent Successfully!</span>';
+                    setTimeout(() => {
+                        closeDraftModal();
+                        fetchLeads(); // Refresh leads list (sent item should disappear)
+                        // Optionally switch to campaigns tab?
+                    }, 1500);
+                } else {
+                    const err = await response.json();
+                    document.getElementById('draftStatus').innerHTML = `<span class="text-red-600">Failed: ${err.detail}</span>`;
+                }
+             } catch (e) {
+                 document.getElementById('draftStatus').innerHTML = `<span class="text-red-600">Network Error</span>`;
+             }
+        }
+
+        let currentSectionId = 'leads'; // Track active section
+        let allLeads = []; // Global store for main dashboard
+        let writeLeadsData = []; // Global store for write section
+        let approvedLeadsData = []; // Global store for approved section
+
+        function showSection(sectionId) {
+            currentSectionId = sectionId;
+            
+            // Clear search when switching sections for clean state
+            const searchInput = document.getElementById('lead-search');
+            if (searchInput) searchInput.value = '';
+
+            // Hide all sections
+            ['leads', 'write', 'radar', 'campaigns', 'settings'].forEach(id => {
+                const section = document.getElementById('section-' + id);
+                if (section) section.classList.add('hidden');
+                
+                // Reset Nav Style
+                const navItem = document.getElementById('nav-' + id);
+                if (navItem) {
+                    navItem.classList.remove('bg-blue-600', 'text-white');
+                    navItem.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-gray-800');
+                }
+            });
+
+            // Show selected section
+            const target = document.getElementById('section-' + sectionId);
+            if (target) target.classList.remove('hidden');
+            
+            // Highlight Nav Link
+            const activeNav = document.getElementById('nav-' + sectionId);
+            if (activeNav) {
+                activeNav.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-gray-800');
+                activeNav.classList.add('bg-blue-600', 'text-white');
+            }
+
+            // Update Title
+            const titles = {
+                'leads': 'Leads Dashboard',
+                'write': 'Email Writer & Editor',
+                'radar': 'Social Radar Control',
+                'campaigns': 'Campaign Manager',
+                'settings': 'System Settings'
+            };
+            if (titles[sectionId]) {
+                document.getElementById('pageTitle').innerText = titles[sectionId];
+            }
+            
+            if (sectionId === 'campaigns') {
+                fetchApprovedLeads();
+            } else if (sectionId === 'write') {
+                fetchWriteLeads();
+            }
+        }
+
+        // --- Write / Drafts Logic ---
+        
+        let writeSelectedLeadId = null;
+
+        async function fetchWriteLeads() {
+            const listContainer = document.getElementById('writeLeadsList');
+            listContainer.innerHTML = '<div class="text-center text-gray-400 mt-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            
+            try {
+                // Fetch leads that are NOT sent yet
+                const response = await fetch('/leads/?status=not_sent');
+                if (!response.ok) throw new Error("Failed to load leads");
+                const leads = await response.json();
+                
+                writeLeadsData = leads; // Store globally
+                renderWriteLeads(writeLeadsData);
+
+            } catch (e) {
+                console.error(e);
+                listContainer.innerHTML = '<div class="text-red-500 text-center mt-4">Error loading list</div>';
+            }
+        }
+
+        function renderWriteLeads(leads) {
+            const listContainer = document.getElementById('writeLeadsList');
+            listContainer.innerHTML = '';
+            
+            if (leads.length === 0) {
+                 listContainer.innerHTML = '<div class="text-center text-gray-400 mt-4">No pending leads found.</div>';
+                 return;
+            }
+
+            leads.forEach(lead => {
+                const isActive = (lead.id === writeSelectedLeadId) ? 'bg-blue-50 border-l-4 border-blue-500' : 'hover:bg-gray-50 border-l-4 border-transparent';
+                const item = document.createElement('div');
+                item.className = `p-3 border-b cursor-pointer transition ${isActive}`;
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-gray-800 truncate w-3/4">${lead.name || 'Unknown Company'}</span>
+                        <span class="text-xs text-gray-400">#${lead.id}</span>
+                    </div>
+                    <div class="text-xs text-gray-500 truncate mt-1">${lead.url || 'No Website'}</div>
+                    <div class="flex justify-between items-center mt-2">
+                            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">${lead.status}</span>
+                            <span class="text-xs text-gray-400">${new Date(lead.created_at).toLocaleDateString()}</span>
+                    </div>
+                `;
+                item.onclick = () => selectWriteLead(lead);
+                listContainer.appendChild(item);
+            });
+        }
+
+        async function selectWriteLead(lead) {
+            writeSelectedLeadId = lead.id;
+            
+            // Highlight selection visually (re-render list or just update classes)
+            fetchWriteLeads(); // Simple re-render to update active state
+            
+            // Show loading in editor
+            const emptyRegion = document.getElementById('editor-empty-state');
+            const contentRegion = document.getElementById('editor-content');
+            
+            emptyRegion.classList.add('hidden');
+            contentRegion.classList.remove('hidden');
+            
+            // Reset Editor
+            document.getElementById('write-company-name').innerText = lead.name || 'Unknown';
+            document.getElementById('write-lead-email').innerText = lead.contact_email || 'No email found';
+            document.getElementById('write-subject').value = 'Loading...';
+            document.getElementById('write-body').value = 'Loading AI Draft...';
+            document.getElementById('write-status').innerHTML = '';
+
+            try {
+                const res = await fetch(`/leads/${lead.id}/draft`);
+                if (res.ok) {
+                    const draft = await res.json();
+                    document.getElementById('write-subject').value = draft.subject;
+                    document.getElementById('write-body').value = draft.body;
+                } else if (res.status === 404) {
+                    // No draft?
+                    document.getElementById('write-subject').value = "Partnership Inquiry";
+                    document.getElementById('write-body').value = `Hello ${lead.name || 'Team'},\n\nWe noticed your business...`;
+                }
+            } catch (e) {
+                document.getElementById('write-body').value = "Error loading draft content.";
+            }
+        }
+
+        async function saveWriteDraft() {
+            if (!writeSelectedLeadId) return;
+            const subject = document.getElementById('write-subject').value;
+            const body = document.getElementById('write-body').value;
+            
+            const statusDiv = document.getElementById('write-status');
+            statusDiv.innerHTML = '<span class="text-gray-500">Saving...</span>';
+
+            try {
+                // Using existing PUT /leads/{id}/draft
+                // Note: If 404 earlier, we might need a creates logic, but for now assuming drafts exist or handled
+                 let response = await fetch(`/leads/${writeSelectedLeadId}/draft`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({new_subject: subject, new_body: body})
+                });
+                
+                if (response.ok) {
+                     statusDiv.innerHTML = '<span class="text-green-600 font-bold"><i class="fas fa-check"></i> Saved</span>';
+                     setTimeout(() => statusDiv.innerHTML = '', 2000);
+                } else {
+                     statusDiv.innerHTML = '<span class="text-red-500">Error saving</span>';
+                }
+            } catch (e) {
+                 statusDiv.innerHTML = '<span class="text-red-500">Network Error</span>';
+            }
+        }
+
+        async function sendWriteDraft() {
+             if (!writeSelectedLeadId) return;
+             if(!confirm("Send this email now?")) return;
+
+             const statusDiv = document.getElementById('write-status');
+             statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Sending...</span>';
+
+             try {
+                const response = await fetch(`/leads/${writeSelectedLeadId}/send`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contact_email: null})
+                });
+
+                if (response.ok) {
+                    statusDiv.innerHTML = '<span class="text-green-600 font-bold">Sent!</span>';
+                    // Remove from list or refresh
+                    setTimeout(() => {
+                        writeSelectedLeadId = null; 
+                        document.getElementById('editor-empty-state').classList.remove('hidden');
+                        document.getElementById('editor-content').classList.add('hidden');
+                        fetchWriteLeads(); // Refresh list to remove the sent one
+                    }, 1500);
+                } else {
+                    const err = await response.json();
+                    statusDiv.innerHTML = `<span class="text-red-600">Failed: ${err.detail}</span>`;
+                }
+             } catch (e) {
+                 statusDiv.innerHTML = `<span class="text-red-600">Network Error</span>`;
+             }
+        }
+
+        async function fetchLeadsWithSpin(btn) {
+            const icon = btn.querySelector('i');
+            if (icon) icon.classList.add('fa-spin');
+            
+            await fetchLeads();
+            
+            setTimeout(() => {
+                 if (icon) icon.classList.remove('fa-spin');
+            }, 500);
+        }
+
+        async function fetchLeads() {
+            const tableBody = document.getElementById('leadsTableBody');
+            
+            try {
+                // Fetch stats independently
+                const statsRes = await fetch('/leads/stats');
+                if (statsRes.ok) {
+                    const stats = await statsRes.json();
+                    document.getElementById('totalLeads').innerText = stats.total_leads;
+                    document.getElementById('newLeads').innerText = stats.new_today;
+                }
+
+                // Filter out sent leads by default for main dashboard
+                const response = await fetch('/leads/?status=not_sent');
+                if (!response.ok) throw new Error('Failed to fetch data');
+                allLeads = await response.json(); // Store locally
+                renderLeads(allLeads);
+                
+                // Stats updated via separate call above
+
+            } catch (error) {
+                console.error('Error:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-red-500">
+                            Error loading leads: ${error.message}
+                        </td>
+                    </tr>`;
+            }
+        }
+
+        function renderLeads(leads) {
+            const tableBody = document.getElementById('leadsTableBody');
+            tableBody.innerHTML = '';
+            
+            if (leads.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">No leads found.</td>
+                    </tr>`;
+                return;
+            }
+
+            leads.forEach(lead => {
+                const createdDate = new Date(lead.created_at).toLocaleDateString() + ' ' + new Date(lead.created_at).toLocaleTimeString();
+                const statusColor = lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800';
+                
+                const row = `
+                    <tr class="hover:bg-gray-50 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#${lead.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${lead.name || 'Unknown'}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                                ${lead.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${lead.url ? `<a href="${lead.url}" target="_blank" class="text-blue-600 hover:underline truncate block max-w-xs">${lead.url}</a>` : '<span class="text-gray-400">N/A</span>'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${createdDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="openDraftModal(${lead.id})" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Create/Edit Draft">
+                                <i class="fas fa-envelope-open-text"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+
+        function filterLeads() {
+            const query = document.getElementById('lead-search').value.toLowerCase();
+            
+            // Shared filter logic
+            const matches = (lead) => 
+                (lead.name && lead.name.toLowerCase().includes(query)) ||
+                (lead.url && lead.url.toLowerCase().includes(query)) ||
+                (lead.status && lead.status.toLowerCase().includes(query));
+
+            // Apply filter based on active view
+            if (currentSectionId === 'leads') {
+                const filtered = allLeads.filter(matches);
+                renderLeads(filtered);
+            } else if (currentSectionId === 'write') {
+                const filtered = writeLeadsData.filter(matches);
+                renderWriteLeads(filtered);
+            } else if (currentSectionId === 'campaigns') {
+                const filtered = approvedLeadsData.filter(matches);
+                renderApprovedLeads(filtered);
+            }
+        }
+
+        async function triggerRadarScan() {
+            const query = document.getElementById('radar-query').value;
+            const location = document.getElementById('radar-location').value;
+            const statusDiv = document.getElementById('radar-status');
+            
+            if (!query || !location) {
+                alert("Please enter both keywords and location.");
+                return;
+            }
+
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Starting scan... Please wait.';
+            statusDiv.className = "mt-4 text-sm text-blue-600";
+
+            try {
+                const response = await fetch('/leads/radar/maps', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, location: location })
+                });
+
+                if (!response.ok) throw new Error("Scan failed to start");
+                
+                const result = await response.json();
+                statusDiv.className = "mt-4 text-sm text-green-600";
+                statusDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Scan Complete! Found leads. Switching to list...`;
+                
+                // Clear inputs
+                document.getElementById('radar-query').value = '';
+                document.getElementById('radar-location').value = '';
+
+                // Refresh leads and switch view after short delay
+                setTimeout(() => {
+                    fetchLeads();
+                    showSection('leads');
+                    statusDiv.classList.add('hidden'); // Reset status for next time
+                }, 1500);
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.className = "mt-4 text-sm text-red-600";
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Error: ${error.message}/td>
+                    </tr>`;
+            }
+        }
+
+        async function fetchApprovedLeads() {
+            const tableBody = document.getElementById('approvedTableBody');
+            tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Loading...</td></tr>';
+            
+            try {
+                const response = await fetch('/leads/?status=sent');
+                if (!response.ok) throw new Error('Failed to fetch sent leads');
+                const leads = await response.json();
+                
+                approvedLeadsData = leads; // Update global store
+                renderApprovedLeads(leads);
+                
+            } catch (err) {
+                 tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        function renderApprovedLeads(leads) {
+            const tableBody = document.getElementById('approvedTableBody');
+            tableBody.innerHTML = '';
+            
+            if (leads.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No sent campaigns yet.</td></tr>';
+                return;
+            }
+
+            leads.forEach(lead => {
+                const sentDate = new Date(lead.created_at).toLocaleDateString(); // Ideally we should store sent_at, but using created_at for now or need to check drafts
+                const row = `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">#${lead.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${lead.name || 'Unknown'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${lead.url || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold">
+                            <i class="fas fa-check-circle"></i> Sent
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        async function toggleNotifications() {
+            const dropdown = document.getElementById('notification-dropdown');
+            dropdown.classList.toggle('hidden');
+            
+            if (!dropdown.classList.contains('hidden')) {
+                // If opening, fetch fresh data and mark as read
+                await fetchNotifications();
+                markAllRead();
+            }
+        }
+
+        async function fetchNotifications() {
+            const list = document.getElementById('notification-list');
+            const badge = document.getElementById('notification-badge');
+            const dropdown = document.getElementById('notification-dropdown');
+
+            try {
+                // Fetch latest 5 leads (assuming they are returned newest first)
+                const res = await fetch('/leads/?limit=5');
+                if (!res.ok) return;
+                const leads = await res.json();
+                
+                list.innerHTML = '';
+                if (leads.length === 0) {
+                    list.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No recent activity.</div>';
+                    return;
+                }
+
+                const lastRead = localStorage.getItem('adMaster_lastReadTime') || '1970-01-01';
+                let hasUnread = false;
+
+                leads.forEach(lead => {
+                    const leadTime = new Date(lead.created_at).getTime();
+                    const readTime = new Date(lastRead).getTime();
+                    
+                    const isNew = leadTime > readTime;
+                    if (isNew) hasUnread = true;
+                    
+                    const item = document.createElement('div');
+                    item.className = `p-3 border-b hover:bg-gray-50 transition cursor-pointer ${isNew ? 'bg-blue-50' : ''}`;
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="font-medium text-gray-800 text-sm truncate w-32">${lead.name || 'New Lead'}</div>
+                            <div class="text-xs text-gray-400">${new Date(lead.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1 flex justify-between">
+                            <span class="capitalize ${lead.status === 'new' ? 'text-blue-600 font-bold' : 'text-gray-500'}">${lead.status}</span>
+                             ${isNew ? '<span class="h-2 w-2 bg-blue-500 rounded-full inline-block mt-1"></span>' : ''}
+                        </div>
+                    `;
+                    // On click, go to leads
+                    item.onclick = () => {
+                         showSection('leads');
+                         toggleNotifications(); // Close dropdown
+                    };
+                    list.appendChild(item);
+                });
+
+                // Update badge based on unread items (only if dropdown is closed)
+                if (dropdown.classList.contains('hidden')) {
+                    if (hasUnread) {
+                         badge.classList.remove('hidden');
+                    }
+                } else {
+                     // If open, we don't show badge, effectively reading them.
+                     badge.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error("Notification Error:", e);
+                list.innerHTML = '<div class="p-4 text-center text-red-500 text-xs">Failed to load.</div>';
+            }
+        }
+
+        async function refreshCurrentView() {
+            const icons = [
+                document.getElementById('refresh-icon'), 
+                document.getElementById('table-refresh-icon')
+            ];
+            
+            icons.forEach(icon => {
+                if(icon) icon.classList.add('fa-spin');
+            });
+
+            try {
+                if (currentSectionId === 'leads') {
+                    await fetchLeads();
+                } else if (currentSectionId === 'write') {
+                    await fetchWriteLeads();
+                } else if (currentSectionId === 'campaigns') {
+                    await fetchApprovedLeads();
+                }
+                // Also update notifications
+                await fetchNotifications();
+            } catch (e) {
+                console.error("Refresh failed", e);
+            } finally {
+                setTimeout(() => {
+                    icons.forEach(icon => {
+                        if(icon) icon.classList.remove('fa-spin');
+                    });
+                }, 500); 
+            }
+        }
+
+        function markAllRead() {
+            localStorage.setItem('adMaster_lastReadTime', new Date().toISOString());
+            document.getElementById('notification-badge').classList.add('hidden');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+             fetchLeads();
+             fetchNotifications(); // Check for alerts on load
+             // Poll every 30 seconds for new notifications
+             setInterval(fetchNotifications, 30000);
+        });
+    </script>
+</body>
+</html>

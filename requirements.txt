@@ -1,0 +1,19 @@
+# Список библиотек
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+psycopg2-binary
+aiosmtplib
+pydantic
+pydantic-settings
+celery
+redis
+python-dotenv
+aiohttp
+openai
+beautifulsoup4
+playwright
+pandas
+openpyxl
+tenacity
