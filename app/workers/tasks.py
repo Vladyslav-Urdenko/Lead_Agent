@@ -42,6 +42,16 @@ def process_lead_task(url: str, my_offer: str, lead_id: int = None, contact_emai
 async def _process_lead_async(url: str, my_offer: str, lead_id: int = None, contact_email: str = None):
     print(f"[TASK STARTED] Processing {url}...")
     
+    # Fetch AI Settings
+    ai_settings = {}
+    async with AsyncSessionLocal() as db:
+        ai_settings["analyze_text"] = await crud.get_setting(db, "analyze_text")
+        ai_settings["generate_email"] = await crud.get_setting(db, "generate_email")
+        # Prefer setting offer if available, as it is user-configured
+        setting_offer = await crud.get_setting(db, "my_offer")
+        
+    final_offer = setting_offer if setting_offer else my_offer
+
     # Step 1: I start by scraping the website using Playwright
     scrape_result = await scrape_company_website(url)
     if scrape_result.get("status") == "error":
@@ -72,12 +82,14 @@ async def _process_lead_async(url: str, my_offer: str, lead_id: int = None, cont
                 await db.commit()
     
     # Step 3: Then I analyze the content using AI
-    analysis = await analyze_text(raw_text)
+    # Passing the custom prompt from settings
+    analysis = await analyze_text(raw_text, custom_prompt=ai_settings.get("analyze_text"))
     if not analysis:
         return {"status": "failed", "reason": "AI Analysis failed to return structure"}
 
     # Step 4: Based on the analysis, I generate a personalized email draft
-    email_body = await generate_email(analysis, my_offer)
+    # Passing the custom prompt and offer from settings
+    email_body = await generate_email(analysis, final_offer, custom_prompt=ai_settings.get("generate_email"))
     subject = f"Partnership with {analysis.summary[:20]}..."
 
     # Step 5: Finally, I save everything to the database as a draft

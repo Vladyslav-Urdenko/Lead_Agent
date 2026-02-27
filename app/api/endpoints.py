@@ -216,13 +216,18 @@ async def process_lead(
         
     await db.commit()
 
+    # Fetch settings for AI
+    ai_settings = {}
+    ai_settings["analyze_text"] = await crud.get_setting(db, "analyze_text")
+    ai_settings["generate_email"] = await crud.get_setting(db, "generate_email")
+
     # 3. Analyze
-    analysis = await ai_engine.analyze_text(raw_text)
+    analysis = await ai_engine.analyze_text(raw_text, custom_prompt=ai_settings.get("analyze_text"))
     if not analysis:
         raise HTTPException(status_code=500, detail="AI Analysis failed.")
 
     # 4. Generate Email
-    draft_body = await ai_engine.generate_email(analysis, request.my_offer)
+    draft_body = await ai_engine.generate_email(analysis, request.my_offer, custom_prompt=ai_settings.get("generate_email"))
     subject = f"Partnership with {analysis.summary[:20]}..." # Simple subject generation
     
     # 5. Save Draft

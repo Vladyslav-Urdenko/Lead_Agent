@@ -58,3 +58,7 @@ docker-compose.override.yml
 # OS specific matches
 .DS_Store
 Thumbs.db
+
+*.db
+*.sqlite
+*.sqlite3

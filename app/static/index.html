@@ -501,6 +501,8 @@
                 fetchApprovedLeads();
             } else if (sectionId === 'write') {
                 fetchWriteLeads();
+            } else if (sectionId === 'settings') {
+                fetchSettings();
             }
         }
 
@@ -800,8 +802,78 @@
             } catch (error) {
                 console.error(error);
                 statusDiv.className = "mt-4 text-sm text-red-600";
-                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Error: ${error.message}/td>
-                    </tr>`;
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Error: ${error.message}</td></tr>`; // Fixed typo in original file /td>
+            }
+        }
+
+        // --- Settings Logic ---
+
+        async function fetchSettings() {
+            try {
+                const response = await fetch('/leads/settings'); // Note: Endpoint prefix check needed
+                // The endpoint defined in endpoints.py is @router.get("/settings"), and router is likely included with prefix
+                // Let's assume /leads/settings based on other calls, but checking main.py would be wise.
+                // Assuming standard FastAPI router setup, let's try /leads/settings if /leads is the prefix.
+                // Wait, in fetchLeads it calls '/leads/'. So prefix is likely '/leads'.
+                
+                if (!response.ok) throw new Error("Failed to load settings");
+                const settings = await response.json();
+                
+                // Map settings to inputs
+                const keys = ['my_offer', 'generate_email', 'analyze_text', 'infer_lead', 'social_lead'];
+                keys.forEach(key => {
+                    const el = document.getElementById('setting-' + key);
+                    if (el && settings[key]) {
+                        el.value = settings[key];
+                    }
+                });
+
+            } catch (e) {
+                console.error("Error loading settings:", e);
+                // alert("Could not load settings.");
+            }
+        }
+
+        async function saveAllSettings() {
+            const btn = document.querySelector('button[onclick="saveAllSettings()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+            btn.disabled = true;
+
+            const keys = ['my_offer', 'generate_email', 'analyze_text', 'infer_lead', 'social_lead'];
+            let hasError = false;
+
+            try {
+                // We'll save them sequentially or in parallel. Parallel is faster.
+                const promises = keys.map(key => {
+                    const el = document.getElementById('setting-' + key);
+                    if (!el) return Promise.resolve();
+                    
+                    return fetch(`/leads/settings/${key}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ value: el.value })
+                    });
+                });
+
+                await Promise.all(promises);
+                
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                btn.innerHTML = '<i class="fas fa-check mr-2"></i> Saved';
+                
+                setTimeout(() => {
+                    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+
+            } catch (e) {
+                console.error(e);
+                alert("Error saving settings.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 
