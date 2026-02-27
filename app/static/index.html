@@ -178,10 +178,10 @@
                             <div id="editor-content" class="hidden flex-1 flex flex-col h-full">
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Company / Recipient</label>
-                                    <div class="flex justify-between">
-                                        <div class="font-bold text-lg" id="write-company-name">Company Name</div>
-                                        <div class="text-sm text-gray-500" id="write-lead-email">email@example.com</div>
-                                    </div>
+                                    <div class="font-bold text-lg mb-2" id="write-company-name">Company Name</div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Email <span class="text-red-500">*</span></label>
+                                    <input type="email" id="write-lead-email" placeholder="Enter recipient email address" class="w-full border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    <p class="text-xs text-gray-400 mt-1">Required to send. Enter manually if not auto-detected.</p>
                                 </div>
                                 
                                 <div class="mb-4">
@@ -573,7 +573,7 @@
             
             // Reset Editor
             document.getElementById('write-company-name').innerText = lead.name || 'Unknown';
-            document.getElementById('write-lead-email').innerText = lead.contact_email || 'No email found';
+            document.getElementById('write-lead-email').value = lead.contact_email || '';
             document.getElementById('write-subject').value = 'Loading...';
             document.getElementById('write-body').value = 'Loading AI Draft...';
             document.getElementById('write-status').innerHTML = '';
@@ -624,7 +624,16 @@
 
         async function sendWriteDraft() {
              if (!writeSelectedLeadId) return;
-             if(!confirm("Send this email now?")) return;
+             
+             // Get email from input field
+             const recipientEmail = document.getElementById('write-lead-email').value.trim();
+             if (!recipientEmail) {
+                 alert('Please enter a recipient email address before sending.');
+                 document.getElementById('write-lead-email').focus();
+                 return;
+             }
+             
+             if(!confirm(`Send this email to ${recipientEmail}?`)) return;
 
              const statusDiv = document.getElementById('write-status');
              statusDiv.innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Sending...</span>';
@@ -633,7 +642,7 @@
                 const response = await fetch(`/leads/${writeSelectedLeadId}/send`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({contact_email: null})
+                    body: JSON.stringify({contact_email: recipientEmail})
                 });
 
                 if (response.ok) {

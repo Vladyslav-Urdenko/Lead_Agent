@@ -54,6 +54,7 @@ class LeadResponse(BaseModel):
     id: int
     name: Optional[str] = None
     url: Optional[str] = None
+    contact_email: Optional[str] = None
     status: str
     created_at: datetime
     
@@ -112,6 +113,107 @@ async def get_leads(
     leads = await crud.get_all_leads(db, skip=skip, limit=limit, status=status)
     return leads
 
+
+@router.post("/{lead_id}/scrape")
+async def scrape_lead_email(lead_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    Manually trigger email scraping for a specific lead.
+    """
+    lead = await crud.get_lead_by_id(db, lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if not lead.url:
+        raise HTTPException(status_code=400, detail="Lead has no website URL to scrape")
+    
+    try:
+        print(f"[SCRAPE] Manual scrape for lead {lead_id}: {lead.url}")
+        scrape_result = await scraper.scrape_company_website(lead.url, lead.name)
+        emails = scrape_result.get("detected_emails", [])
+        suggested = scrape_result.get("suggested_emails", [])
+        
+        if emails:
+            lead.contact_email = emails[0]
+            await db.commit()
+            return {
+                "status": "success", 
+                "lead_id": lead_id,
+                "found_emails": emails,
+                "primary_email": emails[0]
+            }
+        elif suggested:
+            return {
+                "status": "no_emails_found",
+                "lead_id": lead_id,
+                "suggested_emails": suggested,
+                "message": "No emails found on website. Try these suggested patterns."
+            }
+        else:
+            return {
+                "status": "no_emails_found",
+                "lead_id": lead_id,
+                "message": "No emails found on website."
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Scrape failed: {str(e)}")
+
+
+@router.post("/scrape-all")
+async def scrape_all_leads_without_email(db: AsyncSession = Depends(get_db)):
+    """
+    Batch scrape all leads that have a website URL but no email.
+    Returns count of emails found.
+    """
+    # Get leads with URL but no email
+    from sqlalchemy import select, and_, update
+    result = await db.execute(
+        select(Lead).where(
+            and_(
+                Lead.url != None,
+                Lead.url != "",
+                (Lead.contact_email == None) | (Lead.contact_email == "")
+            )
+        ).limit(50)  # Limit to avoid timeout
+    )
+    leads_to_scrape = result.scalars().all()
+    
+    if not leads_to_scrape:
+        return {"status": "success", "message": "No leads need scraping", "scraped": 0, "emails_found": 0}
+    
+    scraped_count = 0
+    emails_found = 0
+    results = []
+    
+    for lead in leads_to_scrape:
+        try:
+            print(f"[BATCH SCRAPE] {lead.id}: {lead.url}")
+            scrape_result = await scraper.scrape_company_website(lead.url, lead.name)
+            emails = scrape_result.get("detected_emails", [])
+            
+            scraped_count += 1
+            
+            if emails:
+                # Use explicit UPDATE statement to ensure the change is persisted
+                await db.execute(
+                    update(Lead).where(Lead.id == lead.id).values(contact_email=emails[0])
+                )
+                await db.commit()
+                emails_found += 1
+                results.append({"id": lead.id, "name": lead.name, "email": emails[0]})
+                print(f"   [SAVED] {lead.name}: {emails[0]}")
+                
+        except Exception as e:
+            print(f"[BATCH SCRAPE] Failed for {lead.id}: {e}")
+            continue
+    
+    return {
+        "status": "success",
+        "scraped": scraped_count,
+        "emails_found": emails_found,
+        "results": results
+    }
+
+
 @router.post("/radar/maps")
 async def radar_maps(
     request: RadarRequest, 
@@ -120,7 +222,7 @@ async def radar_maps(
 ):
     """
     Search Google Maps via Serper, add leads to DB, and notify Telegram.
-    Background: Scrapes website and prepares draft if website exists.
+    Now scrapes websites directly to find emails (no Celery needed).
     """
     # 1. Search Serper
     leads = await maps_radar.search_local_leads(request.query, request.location)
@@ -149,32 +251,40 @@ async def radar_maps(
 
         # Create Lead in DB
         new_lead = await crud.create_lead(db, url=website, name=name)
+        
+        # Step B: IMMEDIATELY scrape website to find email (no Celery needed)
+        found_email = None
+        if website:
+            try:
+                print(f"[RADAR] Scraping {website} for emails...")
+                scrape_result = await scraper.scrape_company_website(website, name)
+                emails = scrape_result.get("detected_emails", [])
+                if emails:
+                    found_email = emails[0]
+                    new_lead.contact_email = found_email
+                    await db.commit()
+                    print(f"[RADAR] Found email for {name}: {found_email}")
+            except Exception as e:
+                print(f"[RADAR] Scrape failed for {website}: {e}")
+        
         results.append({
             "name": name, 
             "status": "added", 
             "id": new_lead.id,
-            "url": website
+            "url": website,
+            "email": found_email
         })
 
-        # Step C: Telegram Alert (If low rating or just found)
-        # Using a simple condition: if rating found, send alert
+        # Step C: Telegram Alert
         alert_msg = (
-            f"📍 *LOCAL LEAD FOUND (via Serper)*\n"
+            f"*LOCAL LEAD FOUND (via Serper)*\n"
             f"Business: {name}\n"
-            f"Rating: {rating} ⭐\n"
+            f"Rating: {rating}\n"
             f"Website: {website or 'None'}\n"
+            f"Email: {found_email or 'Not found'}\n"
             f"Action: Lead added to DB."
         )
         background_tasks.add_task(telegram_bot.send_telegram_alert, alert_msg)
-
-        # Step B: Trigger Background Processing (if website exists)
-        if website:
-             # Calling Celery task for heavy lifting
-             # We assume a default generic offer or placeholder for now, 
-             # as this endpoint doesn't take 'my_offer'. 
-             # Ideally pass it in request or use a default.
-             default_offer = "We offer industrial IoT solutions to optimize your operations."
-             process_lead_task.delay(website, default_offer, new_lead.id)
 
     return {"status": "success", "found": len(leads), "details": results}
 
@@ -394,8 +504,22 @@ async def send_draft(
     if not recipient and lead and lead.contact_email:
         recipient = lead.contact_email
     
+    # AUTO-SCRAPE: If no email but lead has URL, try to scrape it now
+    if not recipient and lead and lead.url:
+        print(f"No email found for lead {lead_id}. Auto-scraping {lead.url}...")
+        try:
+            scrape_result = await scraper.scrape_company_website(lead.url)
+            emails = scrape_result.get("detected_emails", [])
+            if emails:
+                recipient = emails[0]
+                lead.contact_email = recipient
+                await db.commit()
+                print(f"Auto-scraped email for lead {lead_id}: {recipient}")
+        except Exception as e:
+            print(f"Auto-scrape failed for lead {lead_id}: {e}")
+    
     if not recipient:
-        raise HTTPException(status_code=400, detail="Recipient email is required. Provide 'contact_email' or ensure lead has one.")
+        raise HTTPException(status_code=400, detail="Recipient email is required. Provide 'contact_email' or ensure lead has one. No email found on website either.")
 
     # Send Email
     success = await sender.send_email(

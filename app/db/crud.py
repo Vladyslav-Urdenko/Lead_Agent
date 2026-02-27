@@ -87,6 +87,13 @@ async def get_lead_by_url(db: AsyncSession, url: str) -> Optional[Lead]:
     result = await db.execute(select(Lead).where(Lead.url == url))
     return result.scalars().first()
 
+async def get_lead_by_id(db: AsyncSession, lead_id: int) -> Optional[Lead]:
+    """
+    Fetch a lead by its ID.
+    """
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    return result.scalars().first()
+
 async def get_lead_by_name(db: AsyncSession, name: str) -> Optional[Lead]:
     """
     Fetch a lead by its Name.
